@@ -11,6 +11,11 @@ const server = net.createServer((connection) => {
       connection.write(response);
     }
   })
+
+  connection.on("end", () => {
+    console.log("connection ended")
+  });
+
 });
 
 server.listen(PORT, "127.0.0.1");
