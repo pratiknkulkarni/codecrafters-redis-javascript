@@ -1,14 +1,17 @@
 const net = require("net");
 
+const PORT = 6379
+
 const server = net.createServer((connection) => {
-  // console.log("do somethign on connection recvd");
+  const response = Buffer.from("+PONG\r\n")
 
-  // connection.on('data', () => {
-  //   console.log(connection.bytesRead)
-  // })
-
-  connection.write('+PONG\r\n')
+  connection.on("data", (list) => {
+    // hardcoding PING for now
+    if (list.toString() === "*1\r\n$4\r\nPING\r\n") {
+      connection.write(response);
+    }
+  })
 });
 
-server.listen(6379, "127.0.0.1");
-// console.log("listening on port 6379")
+server.listen(PORT, "127.0.0.1");
+console.log(`listening on port ${PORT}`)
