@@ -5,32 +5,15 @@ const PORT = 6379
 const formatBulkString = (str) => `$${Buffer.byteLength(str)}\r\n${str}\r\n`;
 const formatSimpleString = (str) => `+${str}\r\n`;
 const formatError = (msg) => `-${msg}\r\n`;
+const formatNullBulkString = () => `$-1\r\n`
 
-function handleEcho(inputs) {
-  // $<length>\r\n<data>\r\n -> bulk strings
-  let response = ""
-
-  for (let i = 0; i < inputs.length; i++) {
-    let currentResponse = "$"
-    currentResponse += inputs[i].length
-    currentResponse += "\r\n"
-    currentResponse += inputs[i]
-    currentResponse += "\r\n"
-
-
-    response += currentResponse
-  }
-
-  console.log(response)
-  return response
-}
+const storage = new Map();
 
 function parser(input) {
   // $<length>\r\n<data>\r\n -> bulk strings
   // *<number-of-elements>\r\n<element-1>...<element-n> -> arrays
 
   const parts = input.split("\r\n")
-  // console.log(inputs)
   if (!parts[0].startsWith("*")) {
     return []
   }
@@ -46,32 +29,17 @@ function parser(input) {
   }
 
   return args
+}
 
+function setKey(key, value) {
+  storage.set(key, value)
+}
 
-  // array
-  // if (parts[0].startsWith('*')) {
-  //   const arrLen = parts[0].slice(1);
-  //   console.log(arrLen)
-  //
-  //   switch (parts[2].toLowerCase()) {
-  //     case "echo":
-  //       const output = []
-  //
-  //       for (let i = 1; i <= arrLen * 2; i++) {
-  //         if (i % 2 === 0) {
-  //           output.push(parts[i])
-  //         }
-  //       }
-  //
-  //       console.log(output)
-  //       return output
-  //     case "ping":
-  //       return ["ping"]
-  //     default:
-  //       return []
-  //   }
-
-  // }
+function getKey(key) {
+  if (storage.has(key)) {
+    return storage.get(key)
+  }
+  return ""
 }
 
 const server = net.createServer((connection) => {
@@ -95,29 +63,24 @@ const server = net.createServer((connection) => {
         }
         break;
 
+      case "GET":
+        const value = getKey(args[1])
+        if (value === "") {
+          connection.write(formatNullBulkString())
+        }
+        connection.write(formatBulkString(value))
+        break
+
+      case "SET":
+        connection.write(formatSimpleString("OK"));
+        setKey(args[1], args[2])
+        break;
+
       default:
         connection.write(formatError(`ERR unknown command '${command}'`));
     }
-
-    // const output = parser(data)
-    // if (output.length === 0) {
-    //   connection.write("+UNIMPLEMENTED\r\n")
-    //   return
-    // }
-    //
-    // if (output[0].toLowerCase() === "ping") {
-    //   connection.write("+PONG\r\n")
-    //   return
-    // } else if (output[0].toLowerCase() === "echo") {
-    //   const response = handleEcho(output.slice(1))
-    //   connection.write(Buffer.from(response))
-    //
-    //   return
-    // } else {
-    //   connection.write("+UNIMPLEMENTED\r\n")
-    //   return
-    // }
   })
+
   connection.on("error", (err) => {
     console.error("Connection error:", err.message);
   });
