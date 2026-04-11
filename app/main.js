@@ -31,9 +31,26 @@ function parser(input) {
   return args
 }
 
-function setKey(key, value) {
-  storage.set(key, value)
+function setKey(key, value, ttl, type) {
+  storage.set(key, value);
+
+  if (ttl === undefined && type === undefined) {
+    return
+  }
+
+  if (type === 'EX') {
+    setTimeout(() => {
+      storage.delete(key);
+    }, ttl * 1000);
+  } else {
+    setTimeout(() => {
+      storage.delete(key);
+    }, ttl);
+  }
+
+  return
 }
+
 
 function getKey(key) {
   if (storage.has(key)) {
@@ -67,23 +84,36 @@ const server = net.createServer((connection) => {
         const value = getKey(args[1])
         if (value === "") {
           connection.write(formatNullBulkString())
+          break
         }
         connection.write(formatBulkString(value))
         break
 
       case "SET":
-        connection.write(formatSimpleString("OK"));
-        setKey(args[1], args[2])
+        keyValue = args[1]
+        valueValue = args[2]
+
+        if (args.length === 3) {
+          setKey(keyValue, valueValue)
+          connection.write(formatSimpleString("OK"));
+        } else if (args.length === 5) {
+          expiryType = args[3]
+          expiryTime = args[4]
+
+          setKey(keyValue, valueValue, expiryTime, expiryType)
+          connection.write(formatSimpleString("OK"));
+        } else {
+          connection.write(formatError("illegal arguments"))
+        }
         break;
 
       default:
         connection.write(formatError(`ERR unknown command '${command}'`));
     }
   })
-
-  connection.on("error", (err) => {
-    console.error("Connection error:", err.message);
-  });
+  // connection.on("error", (err) => {
+  //   // console.error("Connection error:", err.message);
+  // });
 });
 
 server.listen(PORT, "127.0.0.1");
