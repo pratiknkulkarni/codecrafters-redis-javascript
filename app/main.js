@@ -6,9 +6,11 @@ const formatBulkString = (str) => `$${Buffer.byteLength(str)}\r\n${str}\r\n`;
 const formatSimpleString = (str) => `+${str}\r\n`;
 const formatError = (msg) => `-${msg}\r\n`;
 const formatNullBulkString = () => `$-1\r\n`
-// const formatInteger = () => ``
+const formatInteger = (n) => `:${n}\r\n`
 
 const storage = new Map();
+
+const listStorage = new Map();
 
 function parser(input) {
   // $<length>\r\n<data>\r\n -> bulk strings
@@ -60,6 +62,16 @@ function getKey(key) {
   return ""
 }
 
+function rPush(key, value) {
+  if (!listStorage.has(key)) {
+    listStorage.set(key, []);
+  }
+  const list = listStorage.get(key);
+  list.push(value);
+
+  return list.length;
+}
+
 const server = net.createServer((connection) => {
   connection.on("data", (buffer) => {
     const args = parser(buffer.toString())
@@ -109,11 +121,12 @@ const server = net.createServer((connection) => {
         break;
 
       case "RPUSH":
-        // console.log(args)
         listName = args[1]
         currentValue = args[2]
 
-        connection.write(":1\r\n")
+        const len = rPush(listName, currentValue)
+
+        connection.write(`:${len}\r\n`)
         break
 
       default:
