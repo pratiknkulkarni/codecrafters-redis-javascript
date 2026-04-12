@@ -6,6 +6,7 @@ const formatBulkString = (str) => `$${Buffer.byteLength(str)}\r\n${str}\r\n`;
 const formatSimpleString = (str) => `+${str}\r\n`;
 const formatError = (msg) => `-${msg}\r\n`;
 const formatNullBulkString = () => `$-1\r\n`
+// const formatInteger = () => ``
 
 const storage = new Map();
 
@@ -106,6 +107,14 @@ const server = net.createServer((connection) => {
           connection.write(formatError("illegal arguments"))
         }
         break;
+
+      case "RPUSH":
+        // console.log(args)
+        listName = args[1]
+        currentValue = args[2]
+
+        connection.write(":1\r\n")
+        break
 
       default:
         connection.write(formatError(`ERR unknown command '${command}'`));
